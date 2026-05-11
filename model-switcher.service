@@ -1,0 +1,13 @@
+[Unit]
+Description=Hermes Model Switcher
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.hermes/model-switcher
+ExecStart=/usr/bin/python3 %h/.hermes/model-switcher/server.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

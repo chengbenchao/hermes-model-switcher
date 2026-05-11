@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes Model Switcher</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #090d14;
+    --surface: #101722;
+    --surface-2: #151e2b;
+    --surface-3: #1b2635;
+    --line: #2a3648;
+    --line-strong: #3b4d63;
+    --text: #edf3fb;
+    --muted: #8d9aae;
+    --muted-2: #647184;
+    --accent: #68a6ff;
+    --accent-strong: #2f7cf6;
+    --success: #35d486;
+    --success-bg: rgba(53, 212, 134, 0.13);
+    --danger: #ff6877;
+    --danger-bg: rgba(255, 104, 119, 0.13);
+    --warning: #f3c969;
+    --shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+    --radius: 8px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  button {
+    font: inherit;
+  }
+
+  .app {
+    width: min(1180px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 28px 0 36px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .brand-mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(104, 166, 255, 0.42);
+    border-radius: var(--radius);
+    background: #122033;
+    color: var(--accent);
+    font-size: 19px;
+    font-weight: 800;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(22px, 3vw, 32px);
+    line-height: 1.08;
+    font-weight: 760;
+    letter-spacing: 0;
+  }
+
+  .subtitle {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .refresh-btn,
+  .switch-btn,
+  .model-option {
+    border: 0;
+    cursor: pointer;
+  }
+
+  .refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--text);
+    transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+    white-space: nowrap;
+  }
+
+  .refresh-btn:hover {
+    border-color: var(--line-strong);
+    background: var(--surface-3);
+  }
+
+  .refresh-btn:active,
+  .model-option:active,
+  .switch-btn:active {
+    transform: translateY(1px);
+  }
+
+  .status-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .current-copy {
+    min-width: 0;
+  }
+
+  .eyebrow {
+    margin: 0 0 7px;
+    color: var(--muted-2);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .current-model {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .current-model code,
+  .selected-model code {
+    overflow-wrap: anywhere;
+    color: var(--text);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .provider-pill,
+  .current-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .provider-pill {
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+
+  .current-pill {
+    border: 1px solid rgba(53, 212, 134, 0.52);
+    background: var(--success-bg);
+    color: var(--success);
+  }
+
+  .meta-count {
+    display: flex;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .selection-panel,
+  .models-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .selection-panel {
+    position: sticky;
+    top: 18px;
+    padding: 16px;
+  }
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .panel-title h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 760;
+  }
+
+  .selected-card {
+    min-height: 156px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+  }
+
+  .selected-empty {
+    display: grid;
+    min-height: 126px;
+    place-items: center;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .selected-detail[hidden],
+  .selected-empty[hidden],
+  .switch-btn[hidden] {
+    display: none;
+  }
+
+  .selected-provider {
+    margin-bottom: 10px;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 720;
+  }
+
+  .selected-model {
+    display: grid;
+    gap: 8px;
+  }
+
+  .selection-note {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .switch-btn {
+    display: inline-flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 14px;
+    padding: 0 16px;
+    border-radius: var(--radius);
+    background: var(--accent-strong);
+    color: white;
+    font-weight: 760;
+    transition: filter 160ms ease, transform 160ms ease, opacity 160ms ease;
+  }
+
+  .switch-btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+
+  .switch-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .models-panel {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .models-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+    background: #0f1621;
+  }
+
+  .models-heading h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .provider-list {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .provider-group {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+
+  .provider-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px;
+    border-bottom: 1px solid var(--line);
+    background: #131c29;
+  }
+
+  .provider-name {
+    margin: 0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 14px;
+    font-weight: 760;
+    overflow-wrap: anywhere;
+  }
+
+  .provider-label {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .model-count {
+    flex: 0 0 auto;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--surface-3);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .models-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .model-option {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 58px;
+    padding: 11px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: #101823;
+    color: var(--text);
+    text-align: left;
+    transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  .model-option:hover {
+    border-color: var(--line-strong);
+    background: #142031;
+  }
+
+  .model-option.is-selected {
+    border-color: rgba(104, 166, 255, 0.78);
+    background: rgba(47, 124, 246, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(104, 166, 255, 0.28);
+  }
+
+  .model-option.is-current {
+    border-color: rgba(53, 212, 134, 0.38);
+    background: rgba(53, 212, 134, 0.08);
+  }
+
+  .model-option.is-current.is-selected {
+    border-color: rgba(53, 212, 134, 0.76);
+    background: rgba(53, 212, 134, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(53, 212, 134, 0.28);
+  }
+
+  .model-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 650;
+  }
+
+  .model-current-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid rgba(53, 212, 134, 0.55);
+    border-radius: 999px;
+    background: var(--success-bg);
+    color: var(--success);
+    font-size: 12px;
+    font-weight: 760;
+    white-space: nowrap;
+  }
+
+  .loading,
+  .empty-state,
+  .error-state {
+    display: grid;
+    min-height: 260px;
+    place-items: center;
+    padding: 28px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .error-state {
+    color: var(--danger);
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 9px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    vertical-align: -4px;
+    animation: spin 720ms linear infinite;
+  }
+
+  .toast-root {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 50;
+    display: grid;
+    gap: 10px;
+    width: min(390px, calc(100vw - 32px));
+    pointer-events: none;
+  }
+
+  .toast {
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #111927;
+    color: var(--text);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    font-size: 14px;
+    line-height: 1.45;
+    pointer-events: auto;
+    animation: toast-in 180ms ease-out;
+  }
+
+  .toast.success {
+    border-color: rgba(53, 212, 134, 0.48);
+    background: #0f241b;
+    color: #b8f7d5;
+  }
+
+  .toast.error {
+    border-color: rgba(255, 104, 119, 0.48);
+    background: #291218;
+    color: #ffd1d6;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .health-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 7px 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .health-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+
+  .health-dot.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .health-dot.warn { background: var(--warning); }
+  .health-dot.err { background: var(--danger); }
+
+  .health-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .health-sep {
+    width: 1px;
+    height: 12px;
+    background: var(--line);
+  }
+
+  .last-fetch {
+    margin-left: auto;
+    color: var(--muted-2);
+    font-size: 11px;
+  }
+
+  @media (max-width: 900px) {
+    .app {
+      width: min(100% - 28px, 720px);
+      padding-top: 18px;
+    }
+
+    .topbar,
+    .status-strip,
+    .models-heading {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .topbar,
+    .models-heading {
+      display: flex;
+    }
+
+    .status-strip,
+    .layout {
+      grid-template-columns: 1fr;
+    }
+
+    .selection-panel {
+      position: static;
+    }
+
+    .meta-count {
+      white-space: normal;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .app {
+      width: calc(100% - 20px);
+      padding-bottom: 22px;
+    }
+
+    .brand {
+      align-items: flex-start;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+    }
+
+    .status-strip,
+    .selection-panel,
+    .provider-list {
+      padding: 12px;
+    }
+
+    .current-model {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .provider-head {
+      flex-direction: column;
+    }
+
+    .models-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .toast-root {
+      right: 10px;
+      bottom: 10px;
+      width: calc(100vw - 20px);
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">H</div>
+        <div>
+          <h1>Hermes Model Switcher</h1>
+          <p class="subtitle">按 provider 分组选择模型，并切换 Hermes 默认配置。</p>
+        </div>
+      </div>
+      <button class="refresh-btn" id="refreshBtn" type="button">刷新列表</button>
+    </header>
+
+    <div class="health-bar" id="healthBar">
+      <span class="health-item"><span class="health-dot" id="healthDot"></span><span id="healthLabel">检查中…</span></span>
+      <span class="health-sep"></span>
+      <span class="health-item" id="healthConfig">⚙️ 检查中…</span>
+      <span class="health-sep"></span>
+      <span class="health-item" id="healthHermes">🧠 检查中…</span>
+      <span class="health-sep"></span>
+      <span class="health-item" id="healthApi">📡 检查中…</span>
+      <span class="last-fetch" id="lastFetch"></span>
+    </div>
+
+    <section class="status-strip" aria-label="当前默认模型">
+      <div class="current-copy">
+        <p class="eyebrow">Current Default</p>
+        <div class="current-model">
+          <code id="currentModel">加载中...</code>
+          <span class="provider-pill" id="currentProvider">provider</span>
+          <span class="current-pill">当前默认</span>
+        </div>
+      </div>
+      <div class="meta-count" id="modelStats">正在读取配置</div>
+    </section>
+
+    <div class="layout">
+      <aside class="selection-panel" aria-label="切换操作">
+        <div class="panel-title">
+          <h2>选中模型</h2>
+          <span class="provider-pill" id="selectionState">未选择</span>
+        </div>
+        <div class="selected-card">
+          <div class="selected-empty" id="selectedEmpty">点击任意模型后，可在这里执行切换。</div>
+          <div class="selected-detail" id="selectedDetail" hidden>
+            <div class="selected-provider" id="selectedProvider"></div>
+            <div class="selected-model">
+              <code id="selectedModel"></code>
+              <p class="selection-note" id="selectionNote"></p>
+            </div>
+          </div>
+        </div>
+        <button class="switch-btn" id="switchBtn" type="button" hidden>切换到此模型</button>
+      </aside>
+
+      <section class="models-panel" aria-label="模型列表">
+        <div class="models-heading">
+          <h2>模型列表</h2>
+          <span class="provider-pill" id="providerStats">加载中</span>
+        </div>
+        <div class="provider-list" id="providerList">
+          <div class="loading"><span class="spinner"></span>加载中...</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast-root" id="toastRoot" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+const state = {
+  data: null,
+  selected: null,
+  switching: false,
+  lastFetchAt: null,
+  health: null,
+};
+
+const els = {
+  refreshBtn: document.getElementById('refreshBtn'),
+  switchBtn: document.getElementById('switchBtn'),
+  providerList: document.getElementById('providerList'),
+  currentModel: document.getElementById('currentModel'),
+  currentProvider: document.getElementById('currentProvider'),
+  modelStats: document.getElementById('modelStats'),
+  providerStats: document.getElementById('providerStats'),
+  selectionState: document.getElementById('selectionState'),
+  selectedEmpty: document.getElementById('selectedEmpty'),
+  selectedDetail: document.getElementById('selectedDetail'),
+  selectedProvider: document.getElementById('selectedProvider'),
+  selectedModel: document.getElementById('selectedModel'),
+  selectionNote: document.getElementById('selectionNote'),
+  toastRoot: document.getElementById('toastRoot'),
+  // health
+  healthDot: document.getElementById('healthDot'),
+  healthLabel: document.getElementById('healthLabel'),
+  healthConfig: document.getElementById('healthConfig'),
+  healthHermes: document.getElementById('healthHermes'),
+  healthApi: document.getElementById('healthApi'),
+  lastFetch: document.getElementById('lastFetch'),
+};
+
+els.refreshBtn.addEventListener('click', loadModelsWithRetry);
+els.switchBtn.addEventListener('click', switchSelectedModel);
+els.providerList.addEventListener('click', (event) => {
+  const option = event.target.closest('.model-option');
+  if (!option) return;
+
+  state.selected = {
+    provider: option.dataset.provider,
+    model: option.dataset.model,
+  };
+
+  renderModels();
+  renderSelection();
+});
+
+async function loadModelsWithRetry() {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await loadModels();
+      if (state.data) {
+        if (attempt > 1) {
+          showToast(`模型列表已恢复（第 ${attempt} 次尝试成功）`, 'success');
+        }
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 600));
+    }
+  }
+
+  if (lastError) {
+    console.warn('loadModelsWithRetry failed:', lastError);
+  }
+}
+
+async function loadModels() {
+  renderLoading();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch('/api/models', { signal: controller.signal, cache: 'no-store' });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    state.data = normalizeData(data);
+    state.lastFetchAt = Date.now();
+    keepValidSelection();
+    render();
+    fetchHealth();
+  } catch (error) {
+    state.data = null;
+    const message = error.name === 'AbortError' ? '请求超时，请检查服务是否可达' : error.message;
+    renderError(message);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function formatTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function fetchHealth() {
+  try {
+    const r = await fetch('/api/health', { cache: 'no-store' });
+    state.health = await r.json();
+  } catch {
+    state.health = null;
+  }
+  renderHealth();
+}
+
+function renderHealth() {
+  const h = state.health;
+  els.lastFetch.textContent = state.lastFetchAt ? '最后更新 ' + formatTime(state.lastFetchAt) : '';
+
+  if (!h) {
+    els.healthDot.className = 'health-dot warn';
+    els.healthLabel.textContent = '服务状态未知';
+    els.healthConfig.innerHTML = '⚙️ 配置 —';
+    els.healthHermes.innerHTML = '🧠 CLI —';
+    els.healthApi.innerHTML = '📡 API —';
+    return;
+  }
+
+  const ok = h.ok && h.config_exists;
+  els.healthDot.className = ok ? 'health-dot ok' : 'health-dot warn';
+  els.healthLabel.textContent = ok ? '服务正常' : '服务异常';
+
+  if (h.config_exists) {
+    els.healthConfig.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>⚙️ 配置正常';
+  } else {
+    els.healthConfig.innerHTML = '<span class="health-dot err" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>⚙️ 配置缺失';
+  }
+
+  if (h.hermes_found && h.hermes_bin) {
+    els.healthHermes.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🧠 CLI ' + escapeHTML(h.hermes_bin.split('/').pop());
+  } else {
+    els.healthHermes.innerHTML = '<span class="health-dot err" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🧠 CLI 不可用';
+  }
+
+  els.healthApi.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>📡 API 正常';
+}
+
+async function switchSelectedModel() {
+  if (!state.selected || state.switching || isSelectedCurrent()) return;
+
+  state.switching = true;
+  renderSelection();
+
+  try {
+    const response = await fetch('/api/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state.selected),
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    showToast(`已切换到 ${state.selected.model} @ ${state.selected.provider}`, 'success');
+    await loadModels();
+    state.switching = false;
+    renderSelection();
+  } catch (error) {
+    showToast(`切换失败：${error.message}`, 'error');
+    state.switching = false;
+    renderSelection();
+  }
+}
+
+function normalizeData(data) {
+  return {
+    default_model: data.default_model || '',
+    default_provider: data.default_provider || '',
+    providers: data.providers || {},
+  };
+}
+
+function keepValidSelection() {
+  if (!state.selected || !state.data) return;
+  const provider = state.data.providers[state.selected.provider];
+  if (!provider || !provider.models.includes(state.selected.model)) {
+    state.selected = null;
+  }
+}
+
+function render() {
+  renderCurrent();
+  renderModels();
+  renderSelection();
+}
+
+function renderLoading() {
+  els.refreshBtn.disabled = true;
+  els.providerList.innerHTML = '<div class="loading"><span class="spinner"></span>加载中...</div>';
+  els.currentModel.textContent = '加载中...';
+  els.currentProvider.textContent = 'provider';
+  els.modelStats.textContent = '正在读取配置';
+  els.providerStats.textContent = '加载中';
+}
+
+function renderError(message) {
+  els.refreshBtn.disabled = false;
+  const safeMessage = escapeHTML(message);
+  els.providerList.innerHTML = `
+    <div class="error-state">
+      <div>
+        <div>加载失败：${safeMessage}</div>
+        <div style="margin-top:10px;color:var(--muted);font-size:13px;line-height:1.6;">
+          可能是网络抖动、页面缓存或服务短暂不可达。请点击右上角“刷新列表”重试。
+        </div>
+      </div>
+    </div>`;
+  els.currentModel.textContent = '读取失败';
+  els.currentProvider.textContent = 'error';
+  els.modelStats.textContent = '请检查服务或配置文件';
+  els.providerStats.textContent = '失败';
+  renderSelection();
+}
+
+function renderCurrent() {
+  const { default_model, default_provider, providers } = state.data;
+  const providerCount = Object.keys(providers).length;
+  const modelCount = countModels(providers);
+
+  els.refreshBtn.disabled = false;
+  els.currentModel.textContent = default_model || '未设置';
+  els.currentProvider.textContent = default_provider || '未设置 provider';
+  els.modelStats.textContent = `${providerCount} providers / ${modelCount} models`;
+  els.providerStats.textContent = `${providerCount} providers`;
+}
+
+function renderModels() {
+  if (!state.data) return;
+
+  const { providers, default_model, default_provider } = state.data;
+  const entries = Object.entries(providers);
+
+  if (entries.length === 0) {
+    els.providerList.innerHTML = '<div class="empty-state">没有在配置中找到 provider。</div>';
+    return;
+  }
+
+  els.providerList.innerHTML = entries.map(([providerKey, providerInfo]) => {
+    const models = Array.isArray(providerInfo.models) ? providerInfo.models : [];
+    const providerLabel = providerInfo.name && providerInfo.name !== providerKey
+      ? `<p class="provider-label">${escapeHTML(providerInfo.name)}</p>`
+      : '';
+
+    return `
+      <article class="provider-group">
+        <header class="provider-head">
+          <div>
+            <h3 class="provider-name">${escapeHTML(providerKey)}</h3>
+            ${providerLabel}
+          </div>
+          <span class="model-count">${models.length} models</span>
+        </header>
+        <div class="models-grid">
+          ${models.map((model) => renderModelOption(providerKey, model, default_provider, default_model)).join('')}
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderModelOption(provider, model, defaultProvider, defaultModel) {
+  const isCurrent = provider === defaultProvider && model === defaultModel;
+  const isSelected = state.selected && state.selected.provider === provider && state.selected.model === model;
+  const classes = [
+    'model-option',
+    isCurrent ? 'is-current' : '',
+    isSelected ? 'is-selected' : '',
+  ].filter(Boolean).join(' ');
+
+  return `
+    <button
+      class="${classes}"
+      type="button"
+      data-provider="${escapeAttr(provider)}"
+      data-model="${escapeAttr(model)}"
+      aria-pressed="${isSelected ? 'true' : 'false'}"
+    >
+      <span class="model-name">${escapeHTML(model)}</span>
+      ${isCurrent ? '<span class="model-current-badge">当前默认</span>' : ''}
+    </button>
+  `;
+}
+
+function renderSelection() {
+  const hasSelection = Boolean(state.selected);
+  const current = hasSelection && isSelectedCurrent();
+
+  els.selectedEmpty.hidden = hasSelection;
+  els.selectedDetail.hidden = !hasSelection;
+  els.switchBtn.hidden = !hasSelection;
+  els.selectionState.textContent = hasSelection ? '已选择' : '未选择';
+
+  if (!hasSelection) {
+    els.switchBtn.disabled = true;
+    els.switchBtn.textContent = '切换到此模型';
+    return;
+  }
+
+  els.selectedProvider.textContent = state.selected.provider;
+  els.selectedModel.textContent = state.selected.model;
+  els.selectionNote.textContent = current
+    ? '这是当前默认模型，无需重复切换。'
+    : '将同时更新 model.default 和 model.provider。';
+  els.switchBtn.disabled = state.switching || current;
+  els.switchBtn.textContent = state.switching ? '切换中...' : '切换到此模型';
+}
+
+function isSelectedCurrent() {
+  if (!state.data || !state.selected) return false;
+  return state.selected.provider === state.data.default_provider
+    && state.selected.model === state.data.default_model;
+}
+
+function countModels(providers) {
+  return Object.values(providers).reduce((total, providerInfo) => {
+    return total + (Array.isArray(providerInfo.models) ? providerInfo.models.length : 0);
+  }, 0);
+}
+
+function showToast(message, type) {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  els.toastRoot.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3600);
+}
+
+function escapeAttr(value) {
+  return escapeHTML(value).replace(/`/g, '&#96;');
+}
+
+function escapeHTML(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+loadModelsWithRetry();
+</script>
+</body>
+</html>
