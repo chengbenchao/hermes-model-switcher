@@ -9,6 +9,8 @@ SERVICE_DST="$SYSTEMD_DIR/$SERVICE_NAME"
 CONFIG_PATH="$HOME/.hermes/config.yaml"
 PORT="${PORT:-8899}"
 
+# ── preflight ──────────────────────────────────────────────────────
+
 mkdir -p "$SYSTEMD_DIR"
 chmod +x "$DIR/ctl.sh" "$DIR/install.sh"
 
@@ -16,8 +18,9 @@ if ! command -v python3 >/dev/null 2>&1; then
   echo "❌ python3 未安装"
   exit 1
 fi
+PYTHON3="$(command -v python3)"
 
-if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+if ! "$PYTHON3" -c 'import yaml' >/dev/null 2>&1; then
   echo "❌ 缺少 pyyaml，请先执行: pip install pyyaml"
   exit 1
 fi
@@ -39,7 +42,15 @@ if command -v fuser >/dev/null 2>&1; then
   fi
 fi
 
-cp "$SERVICE_SRC" "$SERVICE_DST"
+# ── generate service file from template ───────────────────────────
+
+sed \
+  -e "s|{{PROJECT_DIR}}|$DIR|g" \
+  -e "s|{{PYTHON3}}|$PYTHON3|g" \
+  "$SERVICE_SRC" > "$SERVICE_DST"
+
+# ── install & start ───────────────────────────────────────────────
+
 systemctl --user daemon-reload
 systemctl --user enable --now "$SERVICE_NAME"
 

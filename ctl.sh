@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hermes Model Switcher — start/stop helper
-DIR="$HOME/.hermes/model-switcher"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="$DIR/.pid"
 
 case "${1:-start}" in

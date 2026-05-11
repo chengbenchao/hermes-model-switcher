@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/.hermes/model-switcher
-ExecStart=/usr/bin/python3 %h/.hermes/model-switcher/server.py
+WorkingDirectory={{PROJECT_DIR}}
+ExecStart={{PYTHON3}} {{PROJECT_DIR}}/server.py
 Restart=always
 RestartSec=3
 
