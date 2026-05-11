@@ -15,7 +15,13 @@ import yaml
 HERMES_HOME = Path.home() / ".hermes"
 CONFIG_PATH = HERMES_HOME / "config.yaml"
 PROFILES_DIR = HERMES_HOME / "profiles"
-HTML_PATH = Path(__file__).parent / "index.html"
+STATIC_DIR = Path(__file__).parent
+STATIC_EXTENSIONS = {".css", ".js", ".map"}
+
+
+def _static_mime(path):
+    ext = Path(path).suffix.lower()
+    return {".css": "text/css", ".js": "application/javascript", ".map": "application/json"}.get(ext, "application/octet-stream")
 PORT = int(os.environ.get("PORT", 8899))
 
 
@@ -125,8 +131,8 @@ def get_health(profile=None):
         "profile": profile or "default",
         "config_path": str(resolve_profile(profile) or ""),
         "config_exists": resolve_profile(profile).exists() if resolve_profile(profile) else False,
-        "html_path": str(HTML_PATH),
-        "html_exists": HTML_PATH.exists(),
+        "html_path": str(STATIC_DIR / "index.html"),
+        "html_exists": (STATIC_DIR / "index.html").exists(),
         "hermes_bin": hermes_bin,
         "hermes_found": bool(hermes_bin),
         "current_provider": current["provider"],
@@ -225,6 +231,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
+    def _send_static(self, filepath):
+        full = STATIC_DIR / filepath.lstrip("/")
+        if not full.resolve().is_relative_to(STATIC_DIR.resolve()):
+            self._send_json({"error": "Not found"}, 404)
+            return
+        try:
+            with open(full, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", _static_mime(filepath) + "; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(data)
+        except FileNotFoundError:
+            self._send_json({"error": "Not found"}, 404)
+
     def _profile_param(self):
         """Extract ?profile= from query string."""
         parsed = urlparse(self.path)
@@ -241,10 +264,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == "/" or path == "/index.html":
             try:
-                with open(HTML_PATH, "rb") as f:
+                with open(STATIC_DIR / "index.html", "rb") as f:
                     self._send_html(f.read())
             except FileNotFoundError:
                 self._send_json({"error": "index.html not found"}, 404)
+
+        elif any(path.endswith(ext) for ext in STATIC_EXTENSIONS):
+            self._send_static(path)
 
         elif path == "/api/profiles":
             try:
@@ -310,7 +336,7 @@ def main():
     print(f"🧠 Hermes Model Switcher v0.3.0 → http://localhost:{PORT}")
     print(f"   Profiles: {', '.join(list_profiles().keys())}")
     print("   Press Ctrl+C to stop.")
-    server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
