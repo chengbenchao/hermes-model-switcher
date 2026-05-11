@@ -2,12 +2,13 @@
 # Hermes Model Switcher — start/stop helper
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="$DIR/.pid"
+PORT="${PORT:-8899}"
 
 case "${1:-start}" in
   start)
     if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
       echo "⚠️  已经在运行中 (PID: $(cat $PIDFILE))"
-      echo "   访问: http://localhost:8899"
+      echo "   访问: http://localhost:$PORT"
       exit 0
     fi
     cd "$DIR"
@@ -15,7 +16,7 @@ case "${1:-start}" in
     echo $! > "$PIDFILE"
     sleep 1
     echo "🧠 Hermes Model Switcher 已启动"
-    echo "   访问: http://localhost:8899"
+    echo "   访问: http://localhost:$PORT"
     echo "   日志: $DIR/server.log"
     ;;
   stop)
@@ -29,7 +30,7 @@ case "${1:-start}" in
     ;;
   status)
     if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
-      echo "✅ 运行中 (PID: $(cat $PIDFILE)) → http://localhost:8899"
+      echo "✅ 运行中 (PID: $(cat $PIDFILE)) → http://localhost:$PORT"
     else
       echo "❌ 未运行"
     fi

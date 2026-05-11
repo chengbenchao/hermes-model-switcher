@@ -21,7 +21,12 @@ fi
 PYTHON3="$(command -v python3)"
 
 if ! "$PYTHON3" -c 'import yaml' >/dev/null 2>&1; then
-  echo "❌ 缺少 pyyaml，请先执行: pip install pyyaml"
+  echo "❌ 缺少 pyyaml，请执行: pip install -r $DIR/requirements.txt"
+  exit 1
+fi
+
+if ! command -v hermes >/dev/null 2>&1 && [ -z "${HERMES_BIN:-}" ]; then
+  echo "❌ hermes CLI 未找到 (PATH 中无 hermes 且未设置 HERMES_BIN)"
   exit 1
 fi
 
