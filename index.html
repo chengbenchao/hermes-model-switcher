@@ -126,8 +126,42 @@
 
   .refresh-btn:active,
   .model-option:active,
-  .switch-btn:active {
+  .switch-btn:active,
+  .profile-select:active {
     transform: translateY(1px);
+  }
+
+  .profile-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 36px 0 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238d9aae'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    white-space: nowrap;
+  }
+
+  .profile-select:hover {
+    border-color: var(--line-strong);
+    background: var(--surface-3);
+  }
+
+  .profile-badge {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
   }
 
   .status-strip {
@@ -640,9 +674,12 @@
         <div class="brand-mark" aria-hidden="true">H</div>
         <div>
           <h1>Hermes Model Switcher</h1>
-          <p class="subtitle">按 provider 分组选择模型，并切换 Hermes 默认配置。</p>
+          <p class="subtitle">按 provider 分组选择模型，并切换 Hermes 默认配置。<span class="profile-badge" id="profileBadge"></span></p>
         </div>
       </div>
+      <select class="profile-select" id="profileSelect" aria-label="选择 Agent Profile">
+        <option value="default">🟢 default</option>
+      </select>
       <button class="refresh-btn" id="refreshBtn" type="button">刷新列表</button>
     </header>
 
@@ -709,6 +746,8 @@ const state = {
   switching: false,
   lastFetchAt: null,
   health: null,
+  profiles: [],
+  activeProfile: 'default',
 };
 
 const els = {
@@ -733,10 +772,19 @@ const els = {
   healthHermes: document.getElementById('healthHermes'),
   healthApi: document.getElementById('healthApi'),
   lastFetch: document.getElementById('lastFetch'),
+  // profile
+  profileSelect: document.getElementById('profileSelect'),
+  profileBadge: document.getElementById('profileBadge'),
 };
 
 els.refreshBtn.addEventListener('click', loadModelsWithRetry);
 els.switchBtn.addEventListener('click', switchSelectedModel);
+els.profileSelect.addEventListener('change', () => {
+  state.activeProfile = els.profileSelect.value;
+  state.selected = null;
+  els.profileBadge.textContent = state.activeProfile === 'default' ? '' : '· ' + state.activeProfile;
+  loadModelsWithRetry();
+});
 els.providerList.addEventListener('click', (event) => {
   const option = event.target.closest('.model-option');
   if (!option) return;
@@ -749,6 +797,29 @@ els.providerList.addEventListener('click', (event) => {
   renderModels();
   renderSelection();
 });
+
+async function fetchProfiles() {
+  try {
+    const r = await fetch('/api/profiles', { cache: 'no-store' });
+    const data = await r.json();
+    state.profiles = Object.keys(data.profiles || {}).sort();
+    populateProfileSelect();
+  } catch (e) {
+    console.warn('fetchProfiles failed:', e);
+    state.profiles = ['default'];
+  }
+}
+
+function populateProfileSelect() {
+  const current = els.profileSelect.value || 'default';
+  const icons = { default: '🟢', finance: '💰' };
+  els.profileSelect.innerHTML = state.profiles.map(p =>
+    `<option value="${p}">${icons[p] || '📋'} ${p}</option>`
+  ).join('');
+  els.profileSelect.value = state.profiles.includes(current) ? current : 'default';
+  state.activeProfile = els.profileSelect.value;
+  els.profileBadge.textContent = state.activeProfile === 'default' ? '' : '· ' + state.activeProfile;
+}
 
 async function loadModelsWithRetry() {
   let lastError = null;
@@ -783,7 +854,8 @@ async function loadModels() {
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const response = await fetch('/api/models', { signal: controller.signal, cache: 'no-store' });
+    const profile = state.activeProfile === 'default' ? '' : '?profile=' + encodeURIComponent(state.activeProfile);
+    const response = await fetch('/api/models' + profile, { signal: controller.signal, cache: 'no-store' });
     const data = await response.json();
 
     if (!response.ok) {
@@ -812,7 +884,8 @@ function formatTime(ts) {
 
 async function fetchHealth() {
   try {
-    const r = await fetch('/api/health', { cache: 'no-store' });
+    const profile = state.activeProfile === 'default' ? '' : '?profile=' + encodeURIComponent(state.activeProfile);
+    const r = await fetch('/api/health' + profile, { cache: 'no-store' });
     state.health = await r.json();
   } catch {
     state.health = null;
@@ -836,6 +909,7 @@ function renderHealth() {
   const ok = h.ok && h.config_exists;
   els.healthDot.className = ok ? 'health-dot ok' : 'health-dot warn';
   els.healthLabel.textContent = ok ? '服务正常' : '服务异常';
+  els.healthLabel.textContent += state.activeProfile === 'default' ? '' : ' [' + state.activeProfile + ']';
 
   if (h.config_exists) {
     els.healthConfig.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>⚙️ 配置正常';
@@ -862,7 +936,7 @@ async function switchSelectedModel() {
     const response = await fetch('/api/switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state.selected),
+      body: JSON.stringify({ ...state.selected, profile: state.activeProfile }),
     });
     const result = await response.json();
 
@@ -870,7 +944,7 @@ async function switchSelectedModel() {
       throw new Error(result.error || `HTTP ${response.status}`);
     }
 
-    showToast(`已切换到 ${state.selected.model} @ ${state.selected.provider}`, 'success');
+    showToast(`已切换到 ${state.selected.model} @ ${state.selected.provider}` + (state.activeProfile !== 'default' ? ` [${state.activeProfile}]` : ''), 'success');
     await loadModels();
     state.switching = false;
     renderSelection();
@@ -1060,7 +1134,7 @@ function escapeHTML(value) {
     .replace(/'/g, '&#39;');
 }
 
-loadModelsWithRetry();
+fetchProfiles().then(() => loadModelsWithRetry());
 </script>
 </body>
 </html>
