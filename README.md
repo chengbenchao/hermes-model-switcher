@@ -2,7 +2,7 @@
 
 **Web 面板式 AI 模型一键切换工具** — 为 [Hermes Agent](https://github.com/nous-hermes/hermes-agent) 而生，支持在浏览器里一键切换 LLM provider/model，并管理多个 Hermes Agent（多 profile）。
 
-> ✅ v0.3.0 — 多 Agent 支持：一个面板管理多个 Hermes profile 的模型切换
+> ✅ v0.4.0 — 生产加固：多线程服务 + CSS 分离 + 自动化测试
 
 ---
 
@@ -15,9 +15,11 @@
 - ✅ **回读校验** — 切换后重新读取 `config.yaml`，确认真实生效
 - 🩺 **健康检查** — 页面内置健康栏（服务状态 / hermes 可达性 / 最后更新时间）
 - 🔁 **前端韧性** — 超时控制 + 自动重试，单次网络失败不崩溃
+- 🧵 **并发安全** — `ThreadingHTTPServer`，切换模型时其他请求不阻塞
 - 📦 **开机自启** — systemd user 服务，重启机器自动拉起
 - 🔌 **API 驱动** — REST API 供脚本/CI 调用，profile 维度全覆盖
-- 🌍 **跨机器可复用** — 自动发现 hermes CLI，避免写死路径
+- 🌍 **跨机器可复用** — 自动发现 hermes CLI 和 python3 路径，避免写死
+- ✅ **自动化测试** — 16 个单元测试覆盖核心逻辑
 
 ---
 
@@ -33,7 +35,7 @@
 ### 1) 安装依赖
 
 ```bash
-pip install pyyaml
+pip install -r requirements.txt
 ```
 
 ### 2) 安装并启动
@@ -54,6 +56,15 @@ python3 server.py
 
 # 后台
 ./ctl.sh start
+```
+
+---
+
+## 🧪 测试
+
+```bash
+pip install pytest
+pytest tests/ -v
 ```
 
 ---
@@ -90,6 +101,7 @@ Profile 目录约定：
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `GET` | `/` | Web 面板页面 |
+| `GET` | `/style.css` | 样式表（静态文件，1h 缓存） |
 | `GET` | `/api/profiles` | 列出所有 profile 及当前模型摘要 |
 | `GET` | `/api/models` | 获取 provider/model 列表（支持 `?profile=`） |
 | `GET` | `/api/health` | 健康状态、hermes 可达性（支持 `?profile=`） |
@@ -157,6 +169,9 @@ journalctl --user -u model-switcher.service -f
 # 健康检查
 curl --noproxy '*' http://localhost:8899/api/health
 
+# 运行测试
+pytest tests/ -v
+
 # 端口检查
 fuser 8899/tcp
 ```
@@ -167,12 +182,16 @@ fuser 8899/tcp
 
 ```text
 model-switcher/
-├── server.py               # Python 后端（HTTP + 多 profile API + CLI 切换）
+├── server.py               # Python 后端（多线程 HTTP + 多 profile API + CLI 切换）
 ├── index.html              # 前端页面（深色主题 + profile 联动 + 健康栏）
-├── ctl.sh                  # 启停脚本
+├── style.css               # 样式表（深色主题设计系统）
+├── tests/
+│   ├── __init__.py
+│   └── test_server.py      # 16 单元测试
+├── ctl.sh                  # 启停脚本（PORT 感知）
+├── install.sh              # 一键安装（动态发现 python3/project dir）
 ├── model-switcher.service  # systemd user 单元模板
-├── install.sh              # 一键安装脚本
-├── .pid                    # 运行时 PID（已 gitignore）
+├── requirements.txt        # Python 依赖
 └── README.md
 ```
 
@@ -183,6 +202,7 @@ model-switcher/
 - 监听 `0.0.0.0:8899`，推荐内网/本机使用
 - 外网访问请加反向代理 + 认证
 - 不直接操作 API key（仅改动 `model.default` / `model.provider`）
+- 静态文件路由含路径穿越守卫（`is_relative_to`）
 - 当前会话不热切模型，**新会话**才生效
 
 ---
@@ -191,6 +211,7 @@ model-switcher/
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
+| `v0.4.0` | 2026-05-12 | 生产加固：`ThreadingHTTPServer` 并发、CSS 分离 + 静态文件路由、16 单元测试、路径穿越守卫 |
 | `v0.3.0` | 2026-05-12 | 多 Agent（profile）支持：profile 下拉联动、全 API 支持 `?profile=`、`POST /api/switch` 支持 `profile` 字段 |
 | `v0.2.0` | 2026-05-12 | 通用版：动态发现 hermes、health 接口与回读校验、前端韧性（超时+重试+健康栏） |
 | `v0.1.0` | 2026-05-11 | 首个可用版：Web 切换 + systemd 自启 + hermes CLI 切换 |
