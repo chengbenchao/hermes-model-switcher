@@ -16,9 +16,12 @@
           <p class="subtitle">按 provider 分组选择模型，并切换 Hermes 默认配置。<span class="profile-badge" id="profileBadge"></span></p>
         </div>
       </div>
-      <select class="profile-select" id="profileSelect" aria-label="选择 Agent Profile">
-        <option value="default">🟢 default</option>
-      </select>
+      <div class="profile-picker">
+        <span class="profile-picker-label">Agent</span>
+        <select class="profile-select" id="profileSelect" aria-label="选择 Agent Profile">
+          <option value="default">🟢 default</option>
+        </select>
+      </div>
       <button class="refresh-btn" id="refreshBtn" type="button">刷新列表</button>
     </header>
 
@@ -121,7 +124,7 @@ els.switchBtn.addEventListener('click', switchSelectedModel);
 els.profileSelect.addEventListener('change', () => {
   state.activeProfile = els.profileSelect.value;
   state.selected = null;
-  els.profileBadge.textContent = state.activeProfile === 'default' ? '' : '· ' + state.activeProfile;
+  els.profileBadge.textContent = '· ' + state.activeProfile;
   loadModelsWithRetry();
 });
 els.providerList.addEventListener('click', (event) => {
@@ -157,7 +160,7 @@ function populateProfileSelect() {
   ).join('');
   els.profileSelect.value = state.profiles.includes(current) ? current : 'default';
   state.activeProfile = els.profileSelect.value;
-  els.profileBadge.textContent = state.activeProfile === 'default' ? '' : '· ' + state.activeProfile;
+  els.profileBadge.textContent = '· ' + state.activeProfile;
 }
 
 async function loadModelsWithRetry() {

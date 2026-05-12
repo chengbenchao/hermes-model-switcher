@@ -152,9 +152,27 @@
   }
 
   .profile-badge {
-    font-size: 11px;
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(104, 166, 255, 0.12);
+    font-size: 12px;
     color: var(--accent);
     font-weight: 700;
+  }
+
+  .profile-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .profile-picker-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
   }
 
   .status-strip {
