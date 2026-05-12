@@ -32,23 +32,15 @@
 - Python 3.8+ 和 `pyyaml`
 - Linux / WSL（systemd user 可用）
 
-### 1) 安装依赖
+### 1) 一键安装
 
 ```bash
-pip install -r requirements.txt
-```
-
-### 2) 安装并启动
-
-```bash
-cd ~/.hermes/model-switcher
-chmod +x install.sh ctl.sh
-./install.sh
+git clone https://github.com/chengbenchao/hermes-model-switcher.git ~/.hermes/model-switcher && ~/.hermes/model-switcher/install.sh
 ```
 
 访问：**http://localhost:8899**
 
-### 3) 其他启动方式
+### 2) 其他启动方式
 
 ```bash
 # 前台（调试）
