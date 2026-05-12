@@ -2,7 +2,7 @@
 
 **Web 面板式 AI 模型一键切换工具** — 为 [Hermes Agent](https://github.com/nous-hermes/hermes-agent) 而生，支持在浏览器里一键切换 LLM provider/model，并管理多个 Hermes Agent（多 profile）。
 
-> ✅ v0.4.0 — 生产加固：多线程服务 + CSS 分离 + 自动化测试
+> ✅ v0.5.0 — 线上感知：Gateway 存活检测 + 飞书连接状态 + 无硬编码全自动发现
 
 ---
 
@@ -13,12 +13,15 @@
 - ⚡ **一键切换** — 点模型名即时切换对应 profile 的默认 provider/model
 - 🔄 **自动刷新** — 切换后立刻更新当前选中状态
 - ✅ **回读校验** — 切换后重新读取 `config.yaml`，确认真实生效
-- 🩺 **健康检查** — 页面内置健康栏（服务状态 / hermes 可达性 / 最后更新时间）
+- 🩺 **深度健康检查** — 页面内置 5 项健康栏：
+  - 服务状态 / 配置文件 / CLI 路径
+  - 🔗 **Gateway 在线检测**（systemd + pgrep 降级）
+  - 🐦 **飞书连接状态**（实时日志分析：消息数 / 错误数 / 最近活动）
 - 🔁 **前端韧性** — 超时控制 + 自动重试，单次网络失败不崩溃
 - 🧵 **并发安全** — `ThreadingHTTPServer`，切换模型时其他请求不阻塞
 - 📦 **开机自启** — systemd user 服务，重启机器自动拉起
 - 🔌 **API 驱动** — REST API 供脚本/CI 调用，profile 维度全覆盖
-- 🌍 **跨机器可复用** — 自动发现 hermes CLI 和 python3 路径，避免写死
+- 🌍 **跨机器可复用** — 自动发现 hermes CLI 和 python3 路径，零硬编码
 - ✅ **自动化测试** — 16 个单元测试覆盖核心逻辑
 
 ---
@@ -87,6 +90,20 @@ Profile 目录约定：
 ---
 
 ## 📡 API
+
+### `/api/health` 返回字段
+
+| 字段 | 说明 |
+|------|------|
+| `ok` | 服务存活 |
+| `config_exists` | `config.yaml` 存在 |
+| `hermes_found` | CLI 可执行 |
+| `gateway.running` | 🔗 Hermes Gateway 进程在线 |
+| `gateway.source` | 检测方式：systemd / pgrep |
+| `feishu.connected` | 🐦 飞书最近有消息活动 |
+| `feishu.messages` | 日志中飞书消息总数 |
+| `feishu.errors` | 飞书相关 ERROR 数 |
+| `feishu.last_log` | 最新一条飞书日志摘要 |
 
 ### 端点
 
@@ -203,7 +220,7 @@ model-switcher/
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
-| `v0.4.0` | 2026-05-12 | 生产加固：`ThreadingHTTPServer` 并发、CSS 分离 + 静态文件路由、16 单元测试、路径穿越守卫 |
+| `v0.5.0` | 2026-05-12 | 线上感知：Gateway 存活检测（systemd+pgrep）、飞书连接状态（实时日志分析）、健康栏扩展至 5 项、消除所有硬编码 |
 | `v0.3.0` | 2026-05-12 | 多 Agent（profile）支持：profile 下拉联动、全 API 支持 `?profile=`、`POST /api/switch` 支持 `profile` 字段 |
 | `v0.2.0` | 2026-05-12 | 通用版：动态发现 hermes、health 接口与回读校验、前端韧性（超时+重试+健康栏） |
 | `v0.1.0` | 2026-05-11 | 首个可用版：Web 切换 + systemd 自启 + hermes CLI 切换 |

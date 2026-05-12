@@ -125,6 +125,11 @@ def get_health(profile=None):
     hermes_bin = find_hermes()
     profiles = list_profiles()
     current = get_current_selection(profile)
+
+    # ── gateway health ──
+    gateway = _check_gateway()
+    feishu = _check_feishu_connection()
+
     return {
         "ok": True,
         "port": PORT,
@@ -138,7 +143,77 @@ def get_health(profile=None):
         "current_provider": current["provider"],
         "current_model": current["model"],
         "profiles": list(profiles.keys()),
+        "gateway": gateway,
+        "feishu": feishu,
     }
+
+
+def _check_gateway():
+    """Check if hermes-gateway systemd service is running."""
+    try:
+        r = subprocess.run(
+            ["systemctl", "--user", "is-active", "hermes-gateway.service"],
+            capture_output=True, text=True, timeout=5,
+        )
+        active = r.stdout.strip() == "active"
+        return {
+            "running": active,
+            "status": r.stdout.strip() if active else "stopped",
+            "source": "systemd",
+        }
+    except Exception:
+        pass
+    # fallback: check process
+    try:
+        r = subprocess.run(
+            ["pgrep", "-f", "hermes.*gateway"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return {
+            "running": r.returncode == 0,
+            "status": "running" if r.returncode == 0 else "stopped",
+            "source": "pgrep",
+        }
+    except Exception:
+        return {"running": False, "status": "unknown", "source": "none"}
+
+
+def _check_feishu_connection():
+    """Check feishu connection from gateway log."""
+    log_path = HERMES_HOME / "logs" / "gateway.log"
+    if not log_path.exists():
+        return {"connected": False, "reason": "no log file"}
+    try:
+        # recent feishu activity (last 5 min)
+        r = subprocess.run(
+            ["bash", "-c",
+             "tac " + str(log_path) + " | grep '\\[Feishu\\]' | head -1"],
+            capture_output=True, text=True, timeout=5,
+        )
+        last_line = r.stdout.strip()
+        # count recent feishu messages
+        r2 = subprocess.run(
+            ["grep", "-c", "\\[Feishu\\]", str(log_path)],
+            capture_output=True, text=True, timeout=5,
+        )
+        msg_count = int(r2.stdout.strip() or "0")
+        # recent feishu errors
+        r3 = subprocess.run(
+            ["grep", "-c", "ERROR.*[Ff]eishu\\|[Ff]eishu.*ERROR", str(log_path)],
+            capture_output=True, text=True, timeout=5,
+        )
+        err_count = int(r3.stdout.strip() or "0")
+
+        has_activity = msg_count > 0
+        return {
+            "connected": has_activity,
+            "messages": msg_count,
+            "errors": err_count,
+            "detail": "active" if has_activity else "no activity",
+            "last_log": last_line[:80] if last_line else "",
+        }
+    except Exception:
+        return {"connected": False, "reason": "log read error"}
 
 
 def get_profiles_summary():

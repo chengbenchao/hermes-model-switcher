@@ -32,7 +32,9 @@
       <span class="health-sep"></span>
       <span class="health-item" id="healthHermes">🧠 检查中…</span>
       <span class="health-sep"></span>
-      <span class="health-item" id="healthApi">📡 检查中…</span>
+      <span class="health-item" id="healthGateway">🔗 检查中…</span>
+      <span class="health-sep"></span>
+      <span class="health-item" id="healthFeishu">🐦 检查中…</span>
       <span class="last-fetch" id="lastFetch"></span>
     </div>
 
@@ -112,7 +114,8 @@ const els = {
   healthLabel: document.getElementById('healthLabel'),
   healthConfig: document.getElementById('healthConfig'),
   healthHermes: document.getElementById('healthHermes'),
-  healthApi: document.getElementById('healthApi'),
+  healthGateway: document.getElementById('healthGateway'),
+  healthFeishu: document.getElementById('healthFeishu'),
   lastFetch: document.getElementById('lastFetch'),
   // profile
   profileSelect: document.getElementById('profileSelect'),
@@ -265,7 +268,21 @@ function renderHealth() {
     els.healthHermes.innerHTML = '<span class="health-dot err" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🧠 CLI 不可用';
   }
 
-  els.healthApi.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>📡 API 正常';
+  const gw = h.gateway || {};
+  if (gw.running) {
+    els.healthGateway.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🔗 Gateway 在线';
+  } else {
+    els.healthGateway.innerHTML = '<span class="health-dot warn" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🔗 Gateway ' + (gw.source === 'none' ? '未知' : '离线');
+  }
+
+  const fs = h.feishu || {};
+  if (fs.connected) {
+    els.healthFeishu.innerHTML = '<span class="health-dot ok" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🐦 飞书已连接';
+  } else if (fs.reason === 'no log file') {
+    els.healthFeishu.innerHTML = '<span class="health-dot warn" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🐦 飞书无日志';
+  } else {
+    els.healthFeishu.innerHTML = '<span class="health-dot warn" style="display:inline-block;width:6px;height:6px;margin-right:3px;vertical-align:-1px"></span>🐦 飞书' + (fs.detail || '未连接');
+  }
 }
 
 async function switchSelectedModel() {
